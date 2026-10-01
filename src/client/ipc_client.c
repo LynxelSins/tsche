@@ -3,8 +3,11 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <stdio.h>
 
 #include "client/ipc_client.h"
+
 
 static int ipc_connect(const char *path)
 {
@@ -52,4 +55,52 @@ int ipc_request(const Request *req, ResponseHeader *hdr, Task **tasks_out)
     }
     close(fd);
     return 0;
+}
+
+static int daemon_reachable(void)
+{
+    char path[256];
+    protocol_socket_path(path, sizeof path);
+    int fd = ipc_connect(path);
+    if (fd < 0) return 0;
+    close(fd);
+    return 1;
+}
+
+int ipc_ensure_daemon(void)
+{
+    if (daemon_reachable()) return 0;
+
+    /* prefer the tasksched that sits next to this binary (bin/) */
+    char exe[512], daemon_path[560] = "tasksched";
+    ssize_t n = readlink("/proc/self/exe", exe, sizeof exe - 1);
+    if (n > 0) {
+        exe[n] = '\0';
+        char *slash = strrchr(exe, '/');
+        if (slash)
+            snprintf(daemon_path, sizeof daemon_path, "%.*s/tasksched",
+                     (int)(slash - exe), exe);
+    }
+
+    pid_t pid = fork();
+    if (pid < 0) return -1;
+    if (pid == 0) {
+        setsid();                            /* survive Ctrl-C / closing the TUI */
+        int fd = open("/dev/null", O_RDWR);
+        if (fd >= 0) {
+            dup2(fd, STDIN_FILENO);
+            dup2(fd, STDOUT_FILENO);
+            dup2(fd, STDERR_FILENO);
+            if (fd > 2) close(fd);
+        }
+        execl(daemon_path, "tasksched", (char *)NULL);
+        execlp("tasksched", "tasksched", (char *)NULL);   /* fallback: PATH */
+        _exit(127);
+    }
+
+    for (int i = 0; i < 20; i++) {           /* wait for the socket, max ~2 s */
+        usleep(100 * 1000);
+        if (daemon_reachable()) return 0;
+    }
+    return -1;
 }
