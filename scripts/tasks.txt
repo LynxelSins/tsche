@@ -1,0 +1,7 @@
+# รายการคำสั่งสำหรับทดสอบ Task Scheduler
+# สามารถรันอัตโนมัติทีละบรรทัดผ่าน ./scripts/batch_submit.sh scripts/tasks.txt
+submit -p 9 echo "[Task A - P9] Urgent task running"
+submit -p 1 echo "[Task B - P1] Low priority background job"
+submit -p 6 ./scripts/test_tasks/cpu_task.sh 2
+submit -p 4 ./scripts/test_tasks/error_task.sh
+submit -p 7 echo "[Task E - P7] High-mid priority job"

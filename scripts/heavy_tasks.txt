@@ -1,0 +1,24 @@
+# ชุดทดสอบงานระยะยาวและหลากหลาย (Heavy & Long Running Workload)
+# สามารถนำไป submit ใน TUI Prompt หรือรันผ่าน batch_submit.sh ได้
+# โครงสร้างคำสั่ง: submit [-p 0-9] <คำสั่ง>
+
+# กลุ่มที่ 1: งาน Priority สูงสุด (Priority 9) - CPU Intensive รันนาน 12 วินาที
+submit -p 9 ./scripts/test_tasks/cpu_task.sh 12
+
+# กลุ่มที่ 2: งานประมวลผลระยะยาว (10 - 25 วินาที) ที่มี Priority ต่างกันเพื่อดูคิว
+submit -p 8 ./scripts/test_tasks/long_task.sh "Database-Backup" 20
+submit -p 7 ./scripts/test_tasks/long_task.sh "Image-Processing" 15
+submit -p 6 ./scripts/test_tasks/long_task.sh "Report-Generator" 18
+submit -p 5 ./scripts/test_tasks/long_task.sh "Model-Training" 25
+
+# กลุ่มที่ 3: งาน Priority ปานกลางและต่ำ (Priority 1 - 4)
+submit -p 4 ./scripts/test_tasks/long_task.sh "Log-Aggregation" 10
+submit -p 3 ./scripts/test_tasks/cpu_task.sh 8
+submit -p 2 ./scripts/test_tasks/long_task.sh "Cache-Warmup" 12
+submit -p 1 ./scripts/test_tasks/long_task.sh "Cleanup-Old-Files" 15
+
+# กลุ่มที่ 4: งานทดสอบ Error และงานด่วนแทรกคิว
+submit -p 5 ./scripts/test_tasks/error_task.sh
+submit -p 9 echo "[URGENT] งานด่วนแทรกคิวสำเร็จ!"
+submit -p 8 ./scripts/test_tasks/long_task.sh "Fast-Sync" 8
+submit -p 2 ./scripts/test_tasks/long_task.sh "Cold-Data-Archive" 30
